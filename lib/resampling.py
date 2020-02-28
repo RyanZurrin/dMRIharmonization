@@ -55,20 +55,20 @@ def save_high_res(fileName, sp_high, lowResImgHdr, highResImg):
     save_nifti(fileName, highResImg, affine= imgHdrOut.get_best_affine(), hdr=imgHdrOut)
 
 
-def resampling(lowResImgPath, lowResMaskPath, lowResImg, lowResImgHdr, lowResMask, lowResMaskHdr, sp_high, bvals,
-               interp_toolbox='spm'):
-
-    # order for b spline interpolation
-    sOrder= 7
-
+def resampling(lowResImgPath, lowResMaskPath, lowResImg, lowResImgHdr, lowResMask, lowResMaskHdr, sp_high, bvals):
+    
     where_b0 = np.where(bvals <= B0_THRESH)[0]
     lowResImgPrime, b0= normalize_data(lowResImg, mask= lowResMask, where_b0= where_b0)
     lowResImg= applymask(lowResImgPrime, b0)
 
     sp_low= lowResImgHdr['pixdim'][1:4]
 
-
-    if interp_toolbox=='scipy':
+    interp_toolbox= getenv('INTERP_TOOL','SCIPY')
+    if interp_toolbox=='SCIPY':
+        
+        # order for b spline interpolation
+        sOrder= 5
+        
         spatial_factor = sp_low / sp_high
         sx, sy, sz = [int(x) for x in lowResImg.shape[:3] * spatial_factor]
 
@@ -86,7 +86,11 @@ def resampling(lowResImgPath, lowResMaskPath, lowResImg, lowResImgHdr, lowResMas
         highResMask= resize(lowResMask.astype('float'), (sx, sy, sz), order= 1, mode= 'symmetric') # order 1 for linear interpolation
         
 
-    elif interp_toolbox=='spm':
+    elif interp_toolbox=='SPM':
+
+        # order for b spline interpolation
+        sOrder= 7
+
         step = sp_high / sp_low
         sx,sy,sz= [int(x) for x in ((lowResImg.shape[:3] + step + 0.01 - 1) / step + 1)]
 
@@ -123,7 +127,7 @@ def resampling(lowResImgPath, lowResMaskPath, lowResImg, lowResImgHdr, lowResMas
         remove(inPrefix+'_resampled.mat')
 
     else:
-        raise ValueError('Undefined interp_toolbox')
+        raise ValueError('Undefined INTERP_TOOL')
 
 
     # process the resampled mask --------------------------------------------------------------
@@ -136,15 +140,25 @@ def resampling(lowResImgPath, lowResMaskPath, lowResImg, lowResImgHdr, lowResMas
     highResB0PathTmp= lowResImgPath.split('.nii')[0] + '_resampled_bse_tmp.nii.gz'
     np.nan_to_num(b0HighRes).clip(min= 0., out= b0HighRes) # using min= 1. is unnecessary
     b0HighRes= applymask(b0HighRes, highResMask)
-    save_high_res(highResB0PathTmp, sp_high, lowResMaskHdr, b0HighRes)
 
     # unring the b0
-    highResB0Path = lowResImgPath.split('.nii')[0] + '_resampled_bse.nii.gz'
-    p= Popen((' ').join(['unring.a64', highResB0PathTmp, highResB0Path]), shell= True)
-    p.wait()
+    highResB0Path = lowResImgPath.split('.nii')[0] + '_resampled_bse.nii.gz' 
+    
+    unring_tool=getenv('UNRING_TOOL','DIPY')
+    if unring_tool=='REISERT':
+        save_high_res(highResB0PathTmp, sp_high, lowResMaskHdr, b0HighRes)
+        p= Popen((' ').join(['unring.a64', highResB0PathTmp, highResB0Path]), shell= True)
+        p.wait()
+        check_call(['rm', highResB0PathTmp])
+        b0_gibs = load(highResB0Path).get_data()
+    
+    elif unring_tool=='DIPY':
+        from dipy.denoise.gibbs import gibbs_removal
+        b0_gibs= gibbs_removal(b0HighRes)
+        
+    else:
+        raise ValueError('Undefined UNRING_TOOL')
 
-    check_call(['rm', highResB0PathTmp])
-    b0_gibs = load(highResB0Path).get_data()
     np.nan_to_num(b0_gibs).clip(min= 0., out= b0_gibs) # using min= 1. is unnecessary
 
     # defining lh_max and lh_min separately to deal with memory error
