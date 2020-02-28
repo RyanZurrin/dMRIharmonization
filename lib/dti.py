@@ -13,7 +13,9 @@
 
 from util import *
 
-def dti(imgPath, maskPath, inPrefix, outPrefix, tool='FSL'):
+def dti(imgPath, maskPath, inPrefix, outPrefix):
+    
+    tool= getenv('DTIFIT_TOOL','DIPY')
 
     vol = load(imgPath)
     mask = load(maskPath)
@@ -45,6 +47,9 @@ def dti(imgPath, maskPath, inPrefix, outPrefix, tool='FSL'):
                '-b', inPrefix + '.bval',
                '-o', outPrefix
               ] & FG
+
+    else:
+        raise ValueError('Undefined DTIFIT_TOOL')
 
 
     gfa_vol = np.nan_to_num(gfa(masked_vol))
