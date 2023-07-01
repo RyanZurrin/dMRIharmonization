@@ -28,8 +28,8 @@ class TestDti(unittest.TestCase):
         mkdir(outPath)
         inPrefix = pjoin(inPath, 'dwi_A_connectom_st_b1200')
 
-        lowResImgPath = inPrefix + '.nii.gz'
-        lowResMaskPath = inPrefix + '_mask.nii.gz'
+        lowResImgPath = f'{inPrefix}.nii.gz'
+        lowResMaskPath = f'{inPrefix}_mask.nii.gz'
 
         outPrefix = pjoin(outPath, 'dwi_A_connectom_st_b1200')
 

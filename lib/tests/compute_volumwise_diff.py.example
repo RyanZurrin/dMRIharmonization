@@ -34,11 +34,8 @@ def hist_calc(a, bins):
 
     a= np.array([item for sublist in a for item in sublist])
 
-    hist_string= []
     N= len(bins)
-    for i in range(N-1):
-        hist_string.append(f'{bins[i]} <--> {bins[i+1]}')
-
+    hist_string = [f'{bins[i]} <--> {bins[i + 1]}' for i in range(N-1)]
     temp= np.histogram(a, bins=bins)[0]
     hist= temp.astype('float')/a.size
 
@@ -149,17 +146,11 @@ def stack_one_b0(bvals, bvecs= None, dwi=None):
     where_dwi = np.where(bvals > B0_THRESH)[0]
 
     reduced_ind= [where_b0[0]]
-    for i in where_dwi:
-        reduced_ind.append(i)
-
-
+    reduced_ind.extend(iter(where_dwi))
     if dwi is not None:
-        reduced_volume= np.take(dwi, indices=reduced_ind, axis=3)
-        return reduced_volume
-    else:
-        reduced_bvals = bvals[reduced_ind]
-        reduced_bvecs = bvecs[reduced_ind, :]
-        return (reduced_bvals, reduced_bvecs)
+        return np.take(dwi, indices=reduced_ind, axis=3)
+    reduced_bvals = bvals[reduced_ind]
+    return reduced_bvals, bvecs[reduced_ind, :]
 
 
 # dti difference
@@ -244,10 +235,7 @@ def scale_diff(imgPath_given_mat, imgPath_given_py, N_shm= 6):
         imgPath_mat = imgPath_given_mat.replace('ORDER', str(i))
         imgPath_py = imgPath_given_py.replace('ORDER', str(i))
 
-        diff_list = []
         total_diff= []
-        mean_diff= []
-
         # load python
         img_py_obj = nib.load(imgPath_py)
         img_py = img_py_obj.get_data()
@@ -260,9 +248,8 @@ def scale_diff(imgPath_given_mat, imgPath_given_py, N_shm= 6):
 
         # obtain case wise difference
         diff = 2*abs(img_py - img_mat) / (img_py+img_mat).clip(min=1.) * 100
-        diff_list.append(diff.flatten())
-        mean_diff.append(diff.mean())
-
+        diff_list = [diff.flatten()]
+        mean_diff = [diff.mean()]
         # save the difference mask
         affine = nib.load(imgPath_py).affine
         nib.Nifti1Image(diff, img_py_obj.affine, img_py_obj.header).to_filename(imgPath_mat.split('.nii')[0]+'_diff_mask.nii.gz')
@@ -279,9 +266,9 @@ def main():
     N_shm= 4
 
     if len(sys.argv)==2:
-        if sys.argv[1]=='-h' or sys.argv[1]=='--help':
-            print(
-'''
+        if sys.argv[1] in ['-h', '--help']:
+                        print(
+            '''
 This module is the gateway for testing equivalence between MATALAB and PYTHON harmonization results. 
 Edit 'compute_volumwise_diff.py' for computing volumewise difference over all cases in a site.
 Specify a sample path in 'imgPath_py' and 'imgPath_mat'. Use XYZ for caseid, ORDER for shm order in the sample paths.
@@ -292,8 +279,8 @@ Sample usage:
 ./compute_volumewise_diff.py 6    # N_shm=6 for Scale/Rish differences
 ./compute_volumeise_diff.py       # no need to specify shm order for DWI/Template/DTI differences
 '''
-                )
-            exit()
+                            )
+                        exit()
 
         else:
             N_shm=int(sys.argv[1])

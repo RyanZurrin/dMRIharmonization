@@ -24,7 +24,7 @@ def write_list(caselist):
     with open(outlist, 'w') as fw:
         with open(caselist) as f:
             content = f.read()
-            for line, row in enumerate(content.split()):
+            for row in content.split():
                 temp = [element for element in row.split(',') if element]  # handling w/space
                 fw.write(f'{CURRDIR}/{temp[0]},{CURRDIR}/{temp[1]}\n')
 

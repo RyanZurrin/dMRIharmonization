@@ -27,7 +27,7 @@ config.read(pjoin(gettempdir(),f'harm_config_{getpid()}.ini'))
 
 N_shm = int(config['DEFAULT']['N_shm'])
 N_proc = int(config['DEFAULT']['N_proc'])
-diffusionMeasures= [x for x in config['DEFAULT']['diffusionMeasures'].split(',')]
+diffusionMeasures = list(config['DEFAULT']['diffusionMeasures'].split(','))
 travelHeads= int(config['DEFAULT']['travelHeads'])
 
 def applyXform(inImg, refImg, warp, trans, outImg):
@@ -45,8 +45,8 @@ def warp_bands(imgPath, maskPath, templatePath):
 
     prefix= basename(imgPath).split('.nii')[0]
     directory= dirname(imgPath)
-    warp = glob(pjoin(templatePath, prefix + f'_FA*[!Inverse]Warp.nii.gz'))
-    trans = glob(pjoin(templatePath, prefix + f'_FA*GenericAffine.mat'))
+    warp = glob(pjoin(templatePath, f'{prefix}_FA*[!Inverse]Warp.nii.gz'))
+    trans = glob(pjoin(templatePath, f'{prefix}_FA*GenericAffine.mat'))
 
     # warping the mask
     applyXform(maskPath,
@@ -105,11 +105,15 @@ def antsMult(caselist, outPrefix):
 
 def dti_stat(siteName, imgs, masks, templatePath, templateHdr):
 
-    maskData = []
-    for maskPath in masks:
-        maskData.append(load_nifti(pjoin(templatePath, basename(maskPath).split('.nii')[0] + 'Warped.nii.gz'))[0])
-
-
+    maskData = [
+        load_nifti(
+            pjoin(
+                templatePath,
+                basename(maskPath).split('.nii')[0] + 'Warped.nii.gz',
+            )
+        )[0]
+        for maskPath in masks
+    ]
     morphed_mask= binary_opening(np.mean(maskData, axis= 0)>0.5, structure= generate_binary_structure(3,1))*1
     morphed_mask_name= pjoin(templatePath, f'{siteName}_Mask.nii.gz')
     templateAffine = templateHdr.get_best_affine()
@@ -258,5 +262,3 @@ def difference_calc(refSite, targetSite, refImgs, targetImgs,
 
 
 
-if __name__ == '__main__':
-    pass

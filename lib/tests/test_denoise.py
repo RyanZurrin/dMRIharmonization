@@ -24,8 +24,8 @@ class TestDenoise(unittest.TestCase):
         inPath = pjoin(FILEDIR, 'connectom_prisma/connectom/A/')
         inPrefix = pjoin(inPath, 'dwi_A_connectom_st_b1200')
 
-        lowResImgPath = inPrefix + '.nii.gz'
-        lowResMaskPath = inPrefix + '_mask.nii.gz'
+        lowResImgPath = f'{inPrefix}.nii.gz'
+        lowResMaskPath = f'{inPrefix}_mask.nii.gz'
 
         # load signal attributes for pre-processing ----------------------------------------------------------------
         imgPath = nrrd2nifti(lowResImgPath)
@@ -37,9 +37,9 @@ class TestDenoise(unittest.TestCase):
         print('Denoising ', imgPath)
         dwiNew, _= denoising(dwi.get_fdata(), mask.get_fdata())
         outPrefix = imgPath.split('.nii')[0] + '_denoised'
-        save_nifti(outPrefix + '.nii.gz', dwiNew, dwi.affine, dwi.header)
-        copyfile(inPrefix + '.bvec', outPrefix + '.bvec')
-        copyfile(inPrefix + '.bval', outPrefix + '.bval')
+        save_nifti(f'{outPrefix}.nii.gz', dwiNew, dwi.affine, dwi.header)
+        copyfile(f'{inPrefix}.bvec', f'{outPrefix}.bvec')
+        copyfile(f'{inPrefix}.bval', f'{outPrefix}.bval')
 
 
 if __name__ == '__main__':

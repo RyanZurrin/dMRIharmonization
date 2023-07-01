@@ -37,7 +37,6 @@ def antsReg(img, mask, mov, outPrefix, n_thread=1):
                                '-m', mov,
                                '-n', str(n_thread),
                                '-o', outPrefix]), shell= True)
-        p.wait()
     else:
         p= Popen((' ').join(['antsRegistrationSyNQuick.sh',
                                '-d', '3',
@@ -45,7 +44,8 @@ def antsReg(img, mask, mov, outPrefix, n_thread=1):
                                '-m', mov,
                                '-n', str(n_thread),
                                '-o', outPrefix]), shell= True)
-        p.wait()
+
+    p.wait()
 
 
 def register_subject(imgPath, warp2mni, trans2mni, templatePath, siteName):
@@ -54,18 +54,18 @@ def register_subject(imgPath, warp2mni, trans2mni, templatePath, siteName):
     directory = dirname(imgPath)
     outPrefix = pjoin(templatePath, imgPath.split('.nii')[0]) # should have _FA at the end
     prefix = psplit(outPrefix)[-1].replace('_FA', '')
-    
+
     dmTmp = pjoin(templatePath, f'Mean_{siteName}_FA.nii.gz')
     maskTmp = pjoin(templatePath, f'{siteName}_Mask.nii.gz')
-    warp2tmp = outPrefix + '1Warp.nii.gz'
-    trans2tmp = outPrefix + '0GenericAffine.mat'
+    warp2tmp = f'{outPrefix}1Warp.nii.gz'
+    trans2tmp = f'{outPrefix}0GenericAffine.mat'
     # signal reconstruction might change with zero padding size, median filtering kernel size, and harmonized mask
     # so in case multiple debug is needed, redo the registration
     antsReg(dmTmp, maskTmp, imgPath, outPrefix)
 
     for dm in diffusionMeasures:
-        output = pjoin(templatePath, prefix + f'_InMNI_{dm}.nii.gz')
-        moving = pjoin(directory, prefix + f'_{dm}.nii.gz')
+        output = pjoin(templatePath, f'{prefix}_InMNI_{dm}.nii.gz')
+        moving = pjoin(directory, f'{prefix}_{dm}.nii.gz')
         # warp diffusion measure to template space first, then to MNI space
         antsApplyTransforms[
             '-d', '3',
@@ -74,8 +74,8 @@ def register_subject(imgPath, warp2mni, trans2mni, templatePath, siteName):
             '-r', mniTmp,
             '-t', warp2mni, trans2mni, warp2tmp, trans2tmp
         ] & FG
-    
-    return pjoin(templatePath, prefix + f'_InMNI_FA.nii.gz')
+
+    return pjoin(templatePath, f'{prefix}_InMNI_FA.nii.gz')
 
 
 
@@ -85,8 +85,8 @@ def sub2tmp2mni(templatePath, siteName, faImgs, N_proc):
     moving = pjoin(templatePath, f'Mean_{siteName}_FA.nii.gz')
 
     outPrefix= pjoin(templatePath, f'TemplateToMNI_{siteName}')
-    warp2mni= outPrefix+'1Warp.nii.gz'
-    trans2mni= outPrefix+'0GenericAffine.mat'
+    warp2mni = f'{outPrefix}1Warp.nii.gz'
+    trans2mni = f'{outPrefix}0GenericAffine.mat'
     # template is created once, it is expected that the user wants to keep the template same during debugging
     # so in case multiple debug is needed, pass the registration
     if not isfile(warp2mni):
@@ -94,11 +94,19 @@ def sub2tmp2mni(templatePath, siteName, faImgs, N_proc):
 
 
     pool= multiprocessing.Pool(N_proc)
-    res=[]
-    for imgPath in faImgs:
-        res.append(pool.apply_async(func= register_subject,
-                   args= (imgPath, warp2mni, trans2mni, templatePath, siteName, )))
-
+    res = [
+        pool.apply_async(
+            func=register_subject,
+            args=(
+                imgPath,
+                warp2mni,
+                trans2mni,
+                templatePath,
+                siteName,
+            ),
+        )
+        for imgPath in faImgs
+    ]
     mniFAimgs= [r.get() for r in res]
 
     pool.close()
@@ -153,7 +161,7 @@ def main():
         for imgPath in imgs:
             directory = dirname(imgPath)
             prefix = basename(imgPath).split('.nii')[0]
-            faImg= pjoin(directory, 'dti', prefix+ '_FA.nii.gz')
+            faImg = pjoin(directory, 'dti', f'{prefix}_FA.nii.gz')
             if not isfile(faImg):
                 raise FileNotFoundError(f'{faImg} not found. Did you run \"--create --debug\" and \"--process --debug\" before?')
 
@@ -167,29 +175,27 @@ def main():
 
     # register and obtain *_InMNI_FA.nii.gz
     mniFAimgs= sub2tmp2mni(templatePath, siteName, faImgs, N_proc)
-    
+
     # target harmonized
     if imgList.endswith('.modified.harmonized'):
-        header = siteName+'_after'
-    # reference
+        header = f'{siteName}_after'
     elif imgList.endswith('.modified'):
         header = siteName
-    # target unprocessed
     else:
-        header = siteName+'_before'
-        
+        header = f'{siteName}_before'
+
     # FIXME user FA image list will use the header {siteName+'_before'}, which is not correct all the time
     # as shown in the above block:
     # reference should use {siteName} while harmonized target should use {siteName+'_after'}
     # impact of this discrepancy is minor since we deprecated use of FA image list
-    
+
     outPrefix = pjoin(templatePath, header)
-    
+
     print('\n\nComputing statistics\n\n')
     print(f'{siteName} site: ')
     site_means= analyzeStat(mniFAimgs)
     generate_csv(faImgs, site_means, outPrefix)
-    
+
     # save statistics for future
     statFile= pjoin(templatePath, 'meanFAstat.csv')
     with open(statFile, 'a') as f:
@@ -197,8 +203,8 @@ def main():
         f.write(f'{header},{np.mean(site_means)},{np.std(site_means)}\n')
         # print an empty line so future results, if appended, are visually separate
         f.write('\n')
-            
-    
+
+
     # print statistics on console
     print('\n\nPrinting statistics\n\n')
     with open(statFile) as f:

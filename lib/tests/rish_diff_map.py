@@ -25,9 +25,9 @@ np.set_printoptions(precision=5)
 
 def main():
 
-    if sys.argv[1]=='-h' or sys.argv[1]=='--help':
-        print(
-'''
+    if sys.argv[1] in ['-h', '--help']:
+                print(
+        '''
 This module is the gateway for testing equivalence between MATALAB and PYTHON rish features.
 Example usage:
 ./rish_diff_map.py abs/path/to/py_rish/prefix abs/path/to/mat_rish/prefix 6
@@ -39,8 +39,8 @@ proper spherical harmonic order upto N_shm given to
 rish_diff(imgPath_given_mat, imgPath_given_py, caselist, N_shm= 6) and
 scale_diff(imgPath_given_mat, imgPath_given_py, N_shm= 6)
 '''
-        )
-        exit()
+                )
+                exit()
 
 
     N_shm=int(sys.argv[3])
@@ -73,7 +73,7 @@ scale_diff(imgPath_given_mat, imgPath_given_py, N_shm= 6)
     mat= np.array(mat)
     py= np.array(py)
 
-    for i in range(0,int(N_shm/2)+1):
+    for i in range(0, N_shm // 2 + 1):
 
         temp_py= py[i].flatten()
         temp_mat= mat[i].flatten()

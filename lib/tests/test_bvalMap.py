@@ -24,9 +24,9 @@ class TestBmap(unittest.TestCase):
         inPath= pjoin(FILEDIR, 'connectom_prisma/connectom/A/')
         inPrefix= pjoin(inPath, 'dwi_A_connectom_st_b1200')
 
-        lowResImgPath= inPrefix+'.nii.gz'
-        bvalPath= inPrefix+'.bval'
-        lowResMaskPath= inPrefix+'_mask.nii.gz'
+        lowResImgPath = f'{inPrefix}.nii.gz'
+        bvalPath = f'{inPrefix}.bval'
+        lowResMaskPath = f'{inPrefix}_mask.nii.gz'
 
         # load signal attributes for pre-processing ----------------------------------------------------------------
         imgPath = nrrd2nifti(lowResImgPath)
@@ -43,9 +43,9 @@ class TestBmap(unittest.TestCase):
         dwiNew, bvalsNew= remapBval(dwi.get_fdata(), mask.get_fdata(), bvals, bNew)
 
         outPrefix = imgPath.split('.nii')[0] + '_bmapped'
-        save_nifti(outPrefix + '.nii.gz', dwiNew, dwi.affine, dwi.header)
-        copyfile(inPrefix + '.bvec', outPrefix + '.bvec')
-        write_bvals(outPrefix + '.bval', bvals)
+        save_nifti(f'{outPrefix}.nii.gz', dwiNew, dwi.affine, dwi.header)
+        copyfile(f'{inPrefix}.bvec', f'{outPrefix}.bvec')
+        write_bvals(f'{outPrefix}.bval', bvals)
 
 if __name__ == '__main__':
     unittest.main()

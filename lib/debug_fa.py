@@ -25,7 +25,7 @@ mniTmp = pjoin(ROOTDIR, 'IITAtlas', 'IITmean_FA.nii.gz')
 config = ConfigParser()
 config.read(pjoin(gettempdir(),f'harm_config_{getpid()}.ini'))
 N_proc = int(config['DEFAULT']['N_proc'])
-diffusionMeasures = [x for x in config['DEFAULT']['diffusionMeasures'].split(',')]
+diffusionMeasures = list(config['DEFAULT']['diffusionMeasures'].split(','))
 
 def register_reference(imgPath, warp2mni, trans2mni, templatePath):
 
@@ -36,11 +36,11 @@ def register_reference(imgPath, warp2mni, trans2mni, templatePath):
 
     for dm in diffusionMeasures:
 
-        output = pjoin(templatePath, prefix + f'_InMNI_{dm}.nii.gz')
+        output = pjoin(templatePath, f'{prefix}_InMNI_{dm}.nii.gz')
 
         # reference site have been already warped to reference template space in buildTemplate.py: warp_bands()
         # warped data are pjoin(directory, 'dti', prefix + f'_WarpedFA.nii.gz')
-        moving = pjoin(templatePath, prefix + f'_Warped{dm}.nii.gz')
+        moving = pjoin(templatePath, f'{prefix}_Warped{dm}.nii.gz')
 
         # so warp diffusion measures that are in template space to MNI space
         antsApplyTransforms[
@@ -59,19 +59,19 @@ def register_target(imgPath, templatePath):
     inPrefix = imgPath.split('.nii')[0]
     prefix = psplit(inPrefix)[-1]
 
-    dmImg = pjoin(directory, 'dti', prefix + f'_FA.nii.gz')
+    dmImg = pjoin(directory, 'dti', f'{prefix}_FA.nii.gz')
 
-    outPrefix = pjoin(templatePath, prefix + '_FA_ToMNI_')
-    warp2mni = outPrefix + '1Warp.nii.gz'
-    trans2mni = outPrefix + '0GenericAffine.mat'
+    outPrefix = pjoin(templatePath, f'{prefix}_FA_ToMNI_')
+    warp2mni = f'{outPrefix}1Warp.nii.gz'
+    trans2mni = f'{outPrefix}0GenericAffine.mat'
     # unprocessed target data is given, so in case multiple debug is needed, pass the registration
     if not exists(warp2mni):
         antsReg(mniTmp, None, dmImg, outPrefix)
 
     for dm in diffusionMeasures:
-        output = pjoin(templatePath, prefix + f'_InMNI_{dm}.nii.gz')
+        output = pjoin(templatePath, f'{prefix}_InMNI_{dm}.nii.gz')
 
-        moving = pjoin(directory, 'dti', prefix + f'_{dm}.nii.gz')
+        moving = pjoin(directory, 'dti', f'{prefix}_{dm}.nii.gz')
         # warp diffusion measures to MNI space directly
         antsApplyTransforms[
             '-d', '3',
@@ -89,20 +89,20 @@ def register_harmonized(imgPath, warp2mni, trans2mni, templatePath, siteName):
     inPrefix = imgPath.split('.nii')[0]
     prefix = psplit(inPrefix)[-1]
 
-    dmImg = pjoin(directory, 'dti', prefix + f'_FA.nii.gz')
+    dmImg = pjoin(directory, 'dti', f'{prefix}_FA.nii.gz')
     dmTmp = pjoin(templatePath, f'Mean_{siteName}_FA.nii.gz')
     maskTmp = pjoin(templatePath, f'{siteName}_Mask.nii.gz')
-    outPrefix = pjoin(templatePath, prefix + '_FA_ToMNI')
-    warp2tmp = outPrefix + '1Warp.nii.gz'
-    trans2tmp = outPrefix + '0GenericAffine.mat'
+    outPrefix = pjoin(templatePath, f'{prefix}_FA_ToMNI')
+    warp2tmp = f'{outPrefix}1Warp.nii.gz'
+    trans2tmp = f'{outPrefix}0GenericAffine.mat'
     # signal reconstruction might change with zero padding size, median filtering kernel size, and harmonized mask
     # so in case multiple debug is needed, redo the registration
     antsReg(dmTmp, maskTmp, dmImg, outPrefix)
 
     for dm in diffusionMeasures:
-        output = pjoin(templatePath, prefix + f'_{dm}_ToTmpWarped.nii.gz')
+        output = pjoin(templatePath, f'{prefix}_{dm}_ToTmpWarped.nii.gz')
 
-        moving = pjoin(directory, 'dti', prefix + f'_{dm}.nii.gz')
+        moving = pjoin(directory, 'dti', f'{prefix}_{dm}.nii.gz')
         # warp diffusion measures to template space first, then to MNI space
         antsApplyTransforms[
             '-d', '3',
@@ -112,9 +112,9 @@ def register_harmonized(imgPath, warp2mni, trans2mni, templatePath, siteName):
             '-t', warp2tmp, trans2tmp
         ] & FG
 
-        output = pjoin(templatePath, prefix + f'_InMNI_{dm}.nii.gz')
+        output = pjoin(templatePath, f'{prefix}_InMNI_{dm}.nii.gz')
 
-        moving = pjoin(templatePath, prefix + f'_{dm}_ToTmpWarped.nii.gz')
+        moving = pjoin(templatePath, f'{prefix}_{dm}_ToTmpWarped.nii.gz')
 
 
         antsApplyTransforms[
@@ -132,8 +132,8 @@ def sub2tmp2mni(templatePath, siteName, caselist, ref= False, tar_unproc= False,
     moving = pjoin(templatePath, f'Mean_{siteName}_FA.nii.gz')
 
     outPrefix= pjoin(templatePath, f'TemplateToMNI_{siteName}')
-    warp2mni= outPrefix+'1Warp.nii.gz'
-    trans2mni= outPrefix+'0GenericAffine.mat'
+    warp2mni = f'{outPrefix}1Warp.nii.gz'
+    trans2mni = f'{outPrefix}0GenericAffine.mat'
     # template is created once, it is expected that the user wants to keep the template same during debugging
     # so in case multiple debug is needed, pass the registration
     if not exists(warp2mni):
@@ -167,7 +167,7 @@ def analyzeStat(file, templatePath):
         inPrefix = imgPath.split('.nii')[0]
         prefix = psplit(inPrefix)[-1]
 
-        faImg= pjoin(templatePath, prefix + f'_InMNI_FA.nii.gz')
+        faImg = pjoin(templatePath, f'{prefix}_InMNI_FA.nii.gz')
         data= load(faImg).get_data()
         temp= data*skel_mask
         meanAttr.append(temp[temp>0].mean())

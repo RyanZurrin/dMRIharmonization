@@ -65,6 +65,6 @@ def nrrd2nifti(imgPath):
 
     nifti_write(imgPath, niftiImgPrefix)
 
-    return niftiImgPrefix+'.nii.gz'
+    return f'{niftiImgPrefix}.nii.gz'
     
     

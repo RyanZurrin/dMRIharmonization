@@ -28,8 +28,8 @@ class TestRish(unittest.TestCase):
         inPrefix= pjoin(inPath, 'dwi_A_connectom_st_b1200')
         outPrefix= pjoin(outPath, 'dwi_A_connectom_st_b1200')
 
-        dwiPath= inPrefix+'.nii.gz'
-        maskPath= inPrefix+'_mask.nii.gz'
+        dwiPath = f'{inPrefix}.nii.gz'
+        maskPath = f'{inPrefix}_mask.nii.gz'
         rish(dwiPath, maskPath, inPrefix, outPrefix, 6)
 
 

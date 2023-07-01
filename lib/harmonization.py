@@ -181,7 +181,7 @@ class pipeline(cli.Application):
     def createTemplate(self):
 
         from buildTemplate import difference_calc, antsMult, warp_bands, \
-            dti_stat, rish_stat, template_masking, createAntsCaselist
+                dti_stat, rish_stat, template_masking, createAntsCaselist
         from preprocess import common_processing
 
         # check directory existence
@@ -217,8 +217,8 @@ class pipeline(cli.Application):
 
         # ATTN: antsMultivariateTemplateConstruction2.sh requires '/' at the end of templatePath
         if not self.templatePath.endswith('/'):
-            self.templatePath= self.templatePath+ '/'
-        
+            self.templatePath = f'{self.templatePath}/'
+
         # check if template was created earlier
         prevTemplateFile= pjoin(self.templatePath, 'prevTemplateCompletion')
         template0= pjoin(self.templatePath, 'template0.nii.gz')
@@ -227,8 +227,8 @@ class pipeline(cli.Application):
             antsMult(abspath(antsMultCaselist), self.templatePath)
         else:
             warnings.warn(f'Using {template0} which was created before')
-            
-            
+
+
         # load templateHdr
         templateHdr= load(pjoin(self.templatePath, 'template0.nii.gz')).header
 
@@ -263,12 +263,12 @@ class pipeline(cli.Application):
         difference_calc(self.reference, self.target, refImgs, targetImgs, self.templatePath, templateHdr,
                         templateMask, [f'L{i}' for i in range(0, self.N_shm+1, 2)])
 
-        
+
         # write a flag in templatePath that can be used to see if template was created earlier
         if not isfile(prevTemplateFile):
             with open(prevTemplateFile, 'w'):
                 pass
-                
+
         print('\n\nTemplate creation completed \n\n')
 
 
@@ -277,12 +277,10 @@ class pipeline(cli.Application):
         from reconstSignal import reconst, approx
         from preprocess import dti_harm, common_processing, preprocessing
 
-        # check the templatePath
         if not exists(self.templatePath):
             raise NotADirectoryError(f'{self.templatePath} does not exist')
-        else:
-            if not listdir(self.templatePath):
-                raise ValueError(f'{self.templatePath} is empty')
+        if not listdir(self.templatePath):
+            raise ValueError(f'{self.templatePath} is empty')
 
 
 
@@ -290,11 +288,11 @@ class pipeline(cli.Application):
         if self.debug and self.ref_csv:
             check_csv(self.ref_unproc_csv, self.force)
             refImgs, refMasks= read_imgs_masks(self.ref_unproc_csv)
-            res= []
             pool = multiprocessing.Pool(self.N_proc)
-            for imgPath, maskPath in zip(refImgs, refMasks):
-                res.append(pool.apply_async(func=preprocessing, args=(imgPath, maskPath)))
-
+            res = [
+                pool.apply_async(func=preprocessing, args=(imgPath, maskPath))
+                for imgPath, maskPath in zip(refImgs, refMasks)
+            ]
             attributes = [r.get() for r in res]
 
             pool.close()
@@ -327,24 +325,29 @@ class pipeline(cli.Application):
             self.target_csv += '.modified'
 
 
-        self.harm_csv= self.target_csv+'.harmonized'
-        fh= open(self.harm_csv, 'w')
-        pool = multiprocessing.Pool(self.N_proc)
-        res= []
-        for imgPath, maskPath in zip(targetImgs, targetMasks):
-            res.append(pool.apply_async(func= reconst, args= (imgPath, maskPath, moving, self.templatePath,)))
+        self.harm_csv = f'{self.target_csv}.harmonized'
+        with open(self.harm_csv, 'w') as fh:
+            pool = multiprocessing.Pool(self.N_proc)
+            res = [
+                pool.apply_async(
+                    func=reconst,
+                    args=(
+                        imgPath,
+                        maskPath,
+                        moving,
+                        self.templatePath,
+                    ),
+                )
+                for imgPath, maskPath in zip(targetImgs, targetMasks)
+            ]
+            for r in res:
+                harmImg, harmMask= r.get()
+                fh.write(f'{harmImg},{harmMask}' + '\n')
 
-        for r in res:
-            harmImg, harmMask= r.get()
-            fh.write(harmImg + ',' + harmMask + '\n')
 
+            pool.close()
+            pool.join()
 
-        pool.close()
-        pool.join()
-
-        fh.close()
-        
-        
         if self.debug:
             harmImgs, harmMasks= read_imgs_masks(self.harm_csv)
             pool = multiprocessing.Pool(self.N_proc)
@@ -352,7 +355,7 @@ class pipeline(cli.Application):
                 pool.apply_async(func= dti_harm, args= (imgPath,maskPath,))
             pool.close()
             pool.join()
-            
+
         print('\n\nHarmonization completed\n\n')
 
 
@@ -380,43 +383,57 @@ class pipeline(cli.Application):
         from harm_plot import generate_csv, harm_plot
 
         print('\n\nComputing statistics\n\n')
-        
+
         print(f'{self.reference} site: ')
         ref_mean = analyzeStat(self.ref_csv, self.templatePath)
         generate_csv(self.ref_csv, ref_mean, pjoin(self.templatePath, self.reference))
 
         print(f'{self.target} site before harmonization: ')
         target_mean_before = analyzeStat(self.tar_unproc_csv, self.templatePath)
-        generate_csv(self.tar_unproc_csv, target_mean_before, pjoin(self.templatePath, self.target+'_before'))
+        generate_csv(
+            self.tar_unproc_csv,
+            target_mean_before,
+            pjoin(self.templatePath, f'{self.target}_before'),
+        )
 
         print(f'{self.target} site after harmonization: ')
         target_mean_after = analyzeStat(self.harm_csv, self.templatePath)
-        generate_csv(self.harm_csv, target_mean_after, pjoin(self.templatePath, self.target+'_after'))
+        generate_csv(
+            self.harm_csv,
+            target_mean_after,
+            pjoin(self.templatePath, f'{self.target}_after'),
+        )
 
-        
+
         print('\n\nPrinting statistics\n\n')
         # save statistics for future
         statFile= pjoin(self.templatePath, 'meanFAstat.csv')
         with open(statFile, 'a') as f:
             f.write(datetime.now().strftime('%m/%d/%y %H:%M')+',mean meanFA,std meanFA\n')
-            
+
             f.write(f'{self.reference},{np.mean(ref_mean)},{np.std(ref_mean)}\n')
             f.write(f'{self.target}_before,{np.mean(target_mean_before)},{np.std(target_mean_before)}\n')
             f.write(f'{self.target}_after,{np.mean(target_mean_after)},{np.std(target_mean_after)}\n')
-            
+
             # print an empty line so future results, if appended, are visually separate
             f.write('\n')
-        
-        
+
+
         # print statistics on console
         with open(statFile) as f:
             print(f.read())
-            
-        
+
+
         # generate graph
-        ebar= harm_plot([ref_mean, target_mean_before, target_mean_after],
-                         labels=[self.reference, self.target+'_before', self.target+'_after'],
-                         outPrefix=pjoin(self.templatePath,'meanFAstat'))
+        ebar = harm_plot(
+            [ref_mean, target_mean_before, target_mean_after],
+            labels=[
+                self.reference,
+                f'{self.target}_before',
+                f'{self.target}_after',
+            ],
+            outPrefix=pjoin(self.templatePath, 'meanFAstat'),
+        )
 
         print(f'\nDetailed statistics, summary results, and demonstrative plots are saved in:\n\n{self.templatePath}/*_stat.csv'
               f'\n{statFile}\n{ebar}\n')
@@ -456,7 +473,7 @@ class pipeline(cli.Application):
             self.ref_unproc_csv= self.ref_csv.strip('.modified')
         self.tar_unproc_csv= self.target_csv.strip('.modified')
 
-        if not self.stats:        
+        if not self.stats:    
             # check appropriateness of N_shm
             if self.N_shm!=-1 and (self.N_shm<2 or self.N_shm>8):
                 raise ValueError('2<= --nshm <=8')
@@ -472,12 +489,10 @@ class pipeline(cli.Application):
 
                 directory= dirname(ref_nshm_img)
                 prefix= basename(ref_nshm_img).split('.nii')[0]
-                bvalFile= pjoin(directory, prefix+'.bval')
+                bvalFile = pjoin(directory, f'{prefix}.bval')
                 self.N_shm, _= determineNshm(bvalFile)
 
 
-            # automatic determination of N_shm during data harmonization is limited by N_shm used during template creation
-            # Scale_L{i}.nii.gz of <= {N_shm during template creation} are present only
             elif self.N_shm==-1 and self.process:
                 for i in range(0,8,2):
                     if isfile(pjoin(self.templatePath, f'Scale_L{i}.nii.gz')):
@@ -506,7 +521,7 @@ class pipeline(cli.Application):
             f.write(f'travelHeads = {1 if self.travelHeads else 0}\n')
             f.write(f'debug = {1 if self.debug else 0}\n')
             f.write(f'force = {1 if self.force else 0}\n')
-            f.write('diffusionMeasures = {}\n'.format((',').join(self.diffusionMeasures)))
+            f.write(f"diffusionMeasures = {','.join(self.diffusionMeasures)}\n")
 
 
         if self.create:
@@ -518,7 +533,7 @@ class pipeline(cli.Application):
                 else:
                     print(line)
             self.force= False
-            
+
         if self.process:
             self.harmonizeData()
 

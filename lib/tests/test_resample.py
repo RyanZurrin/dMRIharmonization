@@ -23,9 +23,9 @@ class TestResample(unittest.TestCase):
         inPath= pjoin(FILEDIR, 'connectom_prisma/connectom/A/')
         inPrefix= pjoin(inPath, 'dwi_A_connectom_st_b1200')
 
-        lowResImgPath= inPrefix+'.nii.gz'
-        bvalPath= inPrefix+'.bval'
-        lowResMaskPath= inPrefix+'_mask.nii.gz'
+        lowResImgPath = f'{inPrefix}.nii.gz'
+        bvalPath = f'{inPrefix}.bval'
+        lowResMaskPath = f'{inPrefix}_mask.nii.gz'
 
         # load signal attributes for pre-processing ----------------------------------------------------------------
         imgPath = nrrd2nifti(lowResImgPath)
@@ -44,9 +44,9 @@ class TestResample(unittest.TestCase):
 
         print('Resampling ', imgPath)
         resampling(lowResImgPath, lowResMaskPath, lowResImg, lowResImgHdr, lowResMask, lowResMaskHdr, sp_high, bvals)
-        outPrefix= inPrefix+'_resampled'
-        copyfile(inPrefix + '.bvec', outPrefix + '.bvec')
-        copyfile(inPrefix + '.bval', outPrefix + '.bval')
+        outPrefix = f'{inPrefix}_resampled'
+        copyfile(f'{inPrefix}.bvec', f'{outPrefix}.bvec')
+        copyfile(f'{inPrefix}.bval', f'{outPrefix}.bval')
 
 
 if __name__ == '__main__':
